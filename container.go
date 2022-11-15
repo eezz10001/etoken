@@ -1,10 +1,10 @@
 package etoken
 
 import (
-	"github.com/eezz10001/eredis"
-	"github.com/go-redis/redis/v8"
 	"github.com/eezz10001/ego/core/econf"
 	"github.com/eezz10001/ego/core/elog"
+	"github.com/eezz10001/eredis"
+	"github.com/go-redis/redis/v8"
 )
 
 type Container struct {
@@ -42,5 +42,11 @@ func (con *Container) Build(options ...Option) *Component {
 func WithRedis(client *eredis.Component) Option {
 	return func(c *Container) {
 		c.client = client.Stub()
+	}
+}
+
+func WithLogger(logger  *elog.Component ) Option {
+	return func(c *Container) {
+		c.logger = logger
 	}
 }

@@ -4,14 +4,14 @@ import (
 	"context"
 	"fmt"
 	"time"
-
+	
 	"github.com/dgrijalva/jwt-go"
+	"github.com/eezz10001/ego/core/elog"
 	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
-	"github.com/eezz10001/ego/core/elog"
 )
 
-const tokenKeyPattern = "/token/%d"
+const tokenKeyPattern = "/token/%v"
 
 type Component struct {
 	config *config
@@ -51,12 +51,12 @@ func (c *Component) CreateAccessToken(ctx context.Context, uid int, startTime in
 
 func (c *Component) CheckAccessToken(ctx context.Context, tokenStr string) (flag bool, err error) {
 	sc, err := c.DecodeAccessToken(tokenStr)
+	
 	if err != nil {
 		err = fmt.Errorf("CheckAccessToken failed, err: %w", err)
 		return
 	}
-	uid := sc["jti"].(float64)
-	uidInt := int(uid)
+	uidInt :=  sc["sub"]
 	err = c.client.Get(ctx, fmt.Sprintf(c.config.Prefix+tokenKeyPattern, uidInt)).Err()
 	if err != nil {
 		err = fmt.Errorf("CheckAccessToken failed2, err: %w", err)
