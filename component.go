@@ -49,14 +49,14 @@ func (c *Component) CreateAccessToken(ctx context.Context, uid int, startTime in
 	return
 }
 
-func (c *Component) CheckAccessToken(ctx context.Context, tokenStr string) (flag bool,uid string , err error) {
+func (c *Component) CheckAccessToken(ctx context.Context, tokenStr string) (flag bool,uid interface{} , err error) {
 	sc, err := c.DecodeAccessToken(tokenStr)
 
 	if err != nil {
 		err = fmt.Errorf("CheckAccessToken failed, err: %w", err)
 		return
 	}
-	uid =  sc["sub"].(string)
+	uid =  sc["sub"]
 	err = c.client.Get(ctx, fmt.Sprintf(c.config.Prefix+tokenKeyPattern, uid)).Err()
 	if err != nil {
 		err = fmt.Errorf("CheckAccessToken failed2, err: %w", err)
