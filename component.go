@@ -4,14 +4,12 @@ import (
 	"context"
 	"fmt"
 	"time"
-	
+
 	"github.com/dgrijalva/jwt-go"
 	"github.com/eezz10001/ego/core/elog"
 	"github.com/go-redis/redis/v8"
-	"github.com/google/uuid"
 )
 
-const tokenKeyPattern = "/token/%v"
 
 type Component struct {
 	config *config
@@ -32,15 +30,15 @@ type AccessTokenTicket struct {
 	ExpiresIn   int64  `json:"expiresIn"`
 }
 
-func (c *Component) CreateAccessToken(ctx context.Context, uid int, startTime int64) (resp AccessTokenTicket, err error) {
-	tokenString, err := c.EncodeAccessToken(uuid.New().String(), uid, startTime)
+func (c *Component) CreateAccessToken(ctx context.Context, uid string, startTime int64) (resp AccessTokenTicket, err error) {
+	tokenString, err := c.EncodeAccessToken(uid, startTime)
 	if err != nil {
 		err = fmt.Errorf("CreateAccessToken EncodeAccessToken failed, err: %w", err)
 		return
 	}
 
-	err = c.client.Set(ctx, fmt.Sprintf(c.config.Prefix+tokenKeyPattern, uid), tokenString,
-		time.Duration(c.config.ExpireInterval)*time.Second).Err()
+	err = c.client.Set(ctx, uid, tokenString, time.Duration(c.config.ExpireInterval)*time.Second).Err()
+
 	if err != nil {
 		return AccessTokenTicket{}, fmt.Errorf("CreateAccessToken Set Token  failed, err: %w", err)
 	}
@@ -49,15 +47,21 @@ func (c *Component) CreateAccessToken(ctx context.Context, uid int, startTime in
 	return
 }
 
-func (c *Component) CheckAccessToken(ctx context.Context, tokenStr string) (flag bool,uid interface{} , err error) {
+func (c *Component) CheckAccessToken(ctx context.Context, tokenStr string) (flag bool, uid interface{}, err error) {
 	sc, err := c.DecodeAccessToken(tokenStr)
 
 	if err != nil {
 		err = fmt.Errorf("CheckAccessToken failed, err: %w", err)
 		return
 	}
-	uid =  sc["sub"]
-	err = c.client.Get(ctx, fmt.Sprintf(c.config.Prefix+tokenKeyPattern, uid)).Err()
+	uid =sc["uid"]
+	if err != nil {
+		err = fmt.Errorf("CheckAccessToken3 failed, err: %w", err)
+		return
+	}
+
+	err = c.client.Get(ctx, fmt.Sprintf("%v",uid)).Err()
+	fmt.Println(err)
 	if err != nil {
 		err = fmt.Errorf("CheckAccessToken failed2, err: %w", err)
 		return
@@ -72,17 +76,16 @@ func (c *Component) RefreshAccessToken(ctx context.Context, tokenStr string, sta
 		err = fmt.Errorf("RefreshAccessToken failed, err: %w", err)
 		return
 	}
-	uid := sc["jti"].(float64)
-	uidInt := int(uid)
-	return c.CreateAccessToken(ctx, uidInt, startTime)
+	uid := sc["uid"].(string)
+
+	return c.CreateAccessToken(ctx, uid, startTime)
 }
 
-func (c *Component) EncodeAccessToken(jwtId string, uid int, startTime int64) (tokenStr string, err error) {
+func (c *Component) EncodeAccessToken(uid string, startTime int64) (tokenStr string, err error) {
 	jwtToken := jwt.New(jwt.SigningMethodHS256)
 	claims := make(jwt.MapClaims)
-	claims["jti"] = jwtId                               // jwt的唯一身份标识，防止重放
 	claims["iss"] = c.config.Iss                        // JWT的签发者
-	claims["sub"] = uid                                 // JWT的主题
+	claims["uid"] = uid                                 // jwt的唯一身份标识，防止重放
 	claims["iat"] = startTime                           // JWT的签发时间
 	claims["exp"] = startTime + c.config.ExpireInterval // JWT的过期时间
 	jwtToken.Claims = claims

@@ -8,6 +8,7 @@ require (
 	github.com/eezz10001/eredis v0.0.1
 	github.com/go-redis/redis/v8 v8.11.4
 	github.com/google/uuid v1.1.2
+	github.com/shopspring/decimal v1.3.1
 )
 
 require (
